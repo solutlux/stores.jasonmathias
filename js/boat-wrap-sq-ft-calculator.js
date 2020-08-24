@@ -22,9 +22,59 @@ window.calculatorData = {
     yearMinimumValue : 1950
 };
 
-class SquareCalculator {
+window.hiddenOptionData = {
+    optionSetContainerSelector: 'div[data-product-option-change]',
+    hiddenLabelContent: 'hn',
+};
+
+class ProductPage {
     constructor(data) {
+        this._hideElements = [];
         this._optionSetContainerSelector = data.optionSetContainerSelector;
+    }
+
+    init(elements) {
+        this._isActive = true;
+    }
+
+    destroy() {
+        this._isActive = false;
+        this._hideElements = [];
+        this._optionSetContainer = null;
+    }
+
+    _hideFormElements() {
+        if (this._hideElements.length) {
+            this._hideElements.forEach(element => element.closest('.form-field').style.display = 'none');
+        }
+    }
+
+    getObservableElements() {
+        return document.querySelector(this._optionSetContainerSelector);
+    }
+
+    getLabelElements(container, label) {
+        const labels = [...container.querySelectorAll('label')]
+            .filter(element => element.textContent.includes(label));
+        return labels;
+    };
+
+    getFieldsByLabel(container, label) {
+        let result = [];
+        const labels = this.getLabelElements(container, label);
+        if (labels.length) {
+            const fields = labels.map(labelElement => labelElement.parentNode.querySelector('select') || labelElement.parentNode.querySelector('input'));
+            if (fields.length) {
+                result = fields;
+            }
+        }
+        return result;
+    };
+}
+
+class SquareCalculator extends ProductPage {
+    constructor(data) {
+        super(data);
 
         this._addonsLabelContent = data.addonsLabelContent;
         this._boatNameLabelContent = data.boatNameLabelContent;
@@ -59,18 +109,19 @@ class SquareCalculator {
         this._transomLengthElement = null;
         this._transomWidthElement = null;
         this._addonElement = null;
-        this._dropDowns = [];
         this._event = new Event('change');
 
         this._calculateBound = this._calculate.bind(this);
         this._addonBound = this._addonSwitch.bind(this);
+
     }
 
     init(elements) {
-        this._isActive = true;
-        [this._optionSetContainer, this._hulkLengthElement, this._hulkWidthElement, this._transomLengthElement, this._transomWidthElement, ...this._dropDowns] = elements;
+        super.init(elements);
+        [this._optionSetContainer, this._hulkLengthElement, this._hulkWidthElement, this._transomLengthElement, this._transomWidthElement, ...this._hideElements] = elements;
 
-        this._hideDropDowns();
+        this._hideFormElements();
+
         this._hulkLengthElement.addEventListener('change', this._calculateBound);
         this._hulkWidthElement.addEventListener('change', this._calculateBound);
         this._transomLengthElement.addEventListener('change', this._calculateBound);
@@ -94,15 +145,14 @@ class SquareCalculator {
     }
 
     destroy() {
+        super.destroy();
         this._hulkLengthElement.removeEventListener('change', this._calculateBound);
         this._hulkWidthElement.removeEventListener('change', this._calculateBound);
         this._transomLengthElement.removeEventListener('change', this._calculateBound);
         this._transomWidthElement.removeEventListener('change', this._calculateBound);
 
-        this._isActive = false;
-        [this._optionSetContainer, this._hulkLengthElement, this._hulkWidthElement, this._transomLengthElement, this._transomWidthElement]
+        [this._hulkLengthElement, this._hulkWidthElement, this._transomLengthElement, this._transomWidthElement]
             .forEach(element => element = null);
-        this._dropDowns = [];
 
         this._addonElement.removeEventListener('change', this._addonBound);
         this._addonElement = null;
@@ -110,7 +160,7 @@ class SquareCalculator {
 
     _addon() {
         //addon switch
-        this._addonLabel = this.getLabelElement(this._optionSetContainer, this._addonsLabelContent);
+        this._addonLabel = this.getLabelElements(this._optionSetContainer, this._addonsLabelContent);
         if (this._addonLabel) {
             this._addonElement = this._addonLabel.map(labelElement => labelElement.parentNode.querySelector('input[type="checkbox"]'));
 
@@ -131,39 +181,25 @@ class SquareCalculator {
         //add headers
         const formObject = document.querySelector('form[data-cart-item-add]');
         if (formObject) {
-            const faqLink = document.createElement('a');
-            faqLink.href = '/boat-wraps-faq';
-            faqLink.innerText = 'FAQ';
-            faqLink.className = 'blocked';
-
-            const measureLink = document.createElement('a');
-            measureLink.href = '/boat-measurements';
-            measureLink.className = 'blocked';
-            measureLink.innerText = 'How to measure boat';
-
             const wrapHeader = document.createElement('h4');
             wrapHeader.innerText = 'Fine art vinyl wrap as seen in image';
 
-            formObject.insertBefore(wrapHeader, this._optionSetContainer);
-            formObject.insertBefore(measureLink, this._optionSetContainer);
-            formObject.insertBefore(faqLink, this._optionSetContainer);
+            formObject.prepend(wrapHeader);
         }
 
-        const transomLengthLabel = this.getLabelElement(this._optionSetContainer, this._transomLengthLabelContent)[0];
+        const transomLengthLabel = this.getLabelElements(this._optionSetContainer, this._transomLengthLabelContent)[0];
         if (transomLengthLabel) {
             transomLengthLabel.innerHTML += '<small>Optional</small>';
         }
-        const transomWidthLabel = this.getLabelElement(this._optionSetContainer, this._transomWidthLabelContent)[0];
+        const transomWidthLabel = this.getLabelElements(this._optionSetContainer, this._transomWidthLabelContent)[0];
         if (transomWidthLabel) {
             transomWidthLabel.innerHTML += '<small>Optional</small>';
         }
 
-        /*
-        const narrowWidthLabel = this.getLabelElement(this._optionSetContainer, this._narrowWidthLabelContent)[0];
-        if (narrowWidthLabel) {
-            narrowWidthLabel.innerHTML += '<small>Optional</small>';
-        }
-        */
+        //const narrowWidthLabel = this.getLabelElements(this._optionSetContainer, this._narrowWidthLabelContent)[0];
+        //if (narrowWidthLabel) {
+        //    narrowWidthLabel.innerHTML += '<small>Optional</small>';
+        //}
 
     }
 
@@ -213,13 +249,13 @@ class SquareCalculator {
 
     _getNearestItem(price) {
         let result = false
-        for (let dropDown = 0; dropDown < this._dropDowns.length; dropDown++) {
-            if (this._dropDowns[dropDown].length > 0) {
-                this._dropDowns[dropDown][0].selected = true;
+        for (let dropDown = 0; dropDown < this._hideElements.length; dropDown++) {
+            if (this._hideElements[dropDown].length > 0) {
+                this._hideElements[dropDown][0].selected = true;
             }
-            for (let option = 0; option < this._dropDowns[dropDown].length; option++) {
-                if (this._dropDowns[dropDown][option].text == price) {
-                    result = this._dropDowns[dropDown][option];
+            for (let option = 0; option < this._hideElements[dropDown].length; option++) {
+                if (this._hideElements[dropDown][option].text == price) {
+                    result = this._hideElements[dropDown][option];
                 }
             }
         }
@@ -231,56 +267,97 @@ class SquareCalculator {
     }
 
     getObservableElements() {
-        const optionSetContainer = document.querySelector(this._optionSetContainerSelector);
-        if (!optionSetContainer) {
-            return false;
+        let result = [];
+        const optionSetContainer = super.getObservableElements();
+        if (optionSetContainer) {
+
+            const dropDowns = this.getFieldsByLabel(optionSetContainer, this._dropdownLabelContent);
+            const hulkLengthElement = this.getFieldsByLabel(optionSetContainer, this._hulkLengthLabelContent)[0];
+            const hulkWidthElement = this.getFieldsByLabel(optionSetContainer, this._hulkWidthLabelContent)[0];
+            const transomLengthElement = this.getFieldsByLabel(optionSetContainer, this._transomLengthLabelContent)[0];
+            const transomWidthElement = this.getFieldsByLabel(optionSetContainer, this._transomWidthLabelContent)[0];
+
+            result = [
+                optionSetContainer,
+                hulkLengthElement,
+                hulkWidthElement,
+                transomLengthElement,
+                transomWidthElement,
+                ...dropDowns
+            ];
         }
+        return result;
+    }
+}
 
-        const dropDowns = this.getFieldsByLabel(optionSetContainer, this._dropdownLabelContent);
-        const hulkLengthElement = this.getFieldsByLabel(optionSetContainer, this._hulkLengthLabelContent)[0];
-        const hulkWidthElement = this.getFieldsByLabel(optionSetContainer, this._hulkWidthLabelContent)[0];
-        const transomLengthElement = this.getFieldsByLabel(optionSetContainer, this._transomLengthLabelContent)[0];
-        const transomWidthElement = this.getFieldsByLabel(optionSetContainer, this._transomWidthLabelContent)[0];
-
-
-        return [optionSetContainer, hulkLengthElement, hulkWidthElement, transomLengthElement, transomWidthElement, ...dropDowns];
+class HiddenOption extends ProductPage {
+    constructor(data) {
+        super(data);
+        this._hiddenLabelContent = data.hiddenLabelContent;
     }
 
-    getLabelElement(container, label) {
-        const labels = [...container.querySelectorAll(`label`)]
-            .filter(element => element.textContent.includes(label));
-        return labels.length ? labels : [null]; //the script should not be initialized if there is no dropdown
-    };
+    init(elements) {
+        super.init(elements);
+        [this._optionSetContainer, this._hideElements] = elements;
+        this._hideFormElements();
 
-    getFieldsByLabel(container, label) {
-        const fields = this. getLabelElement(container, label).map(labelElement => labelElement.parentNode.querySelector('select') ||
-                labelElement.parentNode.querySelector('input')
-            );
-        return fields.length ? fields : [null]; //the script should not be initialized if there is no dropdown
-    };
+        const formObject = document.querySelector('form[data-cart-item-add]');
+        if (formObject) {
+            const faqLink = document.createElement('a');
+            faqLink.href = '/boat-wraps-faq';
+            faqLink.innerText = 'FAQ';
+            faqLink.className = 'blocked';
 
-    _hideDropDowns() {
-        this._dropDowns.forEach(element => element.closest('.form-field').style.display ='none');
+            const measureLink = document.createElement('a');
+            measureLink.href = '/boat-measurements';
+            measureLink.className = 'blocked';
+            measureLink.innerText = 'How to measure boat';
+            this._optionSetContainer.before(measureLink);
+            this._optionSetContainer.before(faqLink);
+        }
+
+    }
+
+    getObservableElements() {
+        let result = false;
+        const optionSetContainer = super.getObservableElements();
+        const hiddenFields = this.getFieldsByLabel(optionSetContainer, this._hiddenLabelContent);
+        if ((optionSetContainer) && (hiddenFields.length > 0)) {
+            result = [
+                optionSetContainer,
+                this.getFieldsByLabel(optionSetContainer, this._hiddenLabelContent)
+            ];
+        }
+        return result;
     }
 }
 
 const squareCalculatorHandler = new SquareCalculator(window.calculatorData);
+const hiddenOptionHandler = new HiddenOption(window.hiddenOptionData);
 
-const checkAllFieldsAndInit = () => {
-    const elements = squareCalculatorHandler.getObservableElements();
-    const areAllElementsPresent = elements && elements.every(element => element);
-    return areAllElementsPresent
-        ? !squareCalculatorHandler.isActive && squareCalculatorHandler.init(elements)
+const checkCalculatorFieldsAndInit = () => {
+    const calculatorFields = squareCalculatorHandler.getObservableElements();
+    const areCalculatorElementsPresent = calculatorFields && calculatorFields.every(element => element);
+    return areCalculatorElementsPresent
+        ? !squareCalculatorHandler.isActive && squareCalculatorHandler.init(calculatorFields)
         : squareCalculatorHandler.isActive && squareCalculatorHandler.destroy();
 };
 
 const setCalculatorObserver = () => {
-    const documentObserver = new MutationObserver((mutation) => checkAllFieldsAndInit());
+    const documentObserver = new MutationObserver((mutation) => checkCalculatorFieldsAndInit());
     documentObserver.observe(document.documentElement, {childList: true, subtree: true})
 };
 
+const checkHiddenOptionFieldsAndInit = () => {
+    const hiddenOptionFields = hiddenOptionHandler.getObservableElements();
+    const hiddenOptionElementsPresent = hiddenOptionFields && hiddenOptionFields.every(element => element);
+    return hiddenOptionElementsPresent
+        ? !hiddenOptionHandler.isActive && hiddenOptionHandler.init(hiddenOptionFields)
+        : hiddenOptionHandler.isActive && hiddenOptionHandler.destroy();
+};
 
 window.addEventListener('DOMContentLoaded', () => {
-    checkAllFieldsAndInit();
+    checkCalculatorFieldsAndInit();
     setCalculatorObserver();
+    checkHiddenOptionFieldsAndInit();
 });
