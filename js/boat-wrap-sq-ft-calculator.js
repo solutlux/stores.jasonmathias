@@ -1,5 +1,5 @@
 window.calculatorData = {
-    sqFtPrice: 7, // $7 sq/ft
+    sqFtPrice: 7.5, // $7 sq/ft
     optionSetContainerSelector: 'div[data-product-option-change]',
     dropdownLabelContent: 'Prices',
     hulkLengthLabelContent: 'Side of boat (hull) Total Length (inches)',

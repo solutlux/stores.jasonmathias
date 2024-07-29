@@ -1,0 +1,17 @@
+.form-field[data-product-attribute="input-checkbox"] label.form-label {
+    margin-bottom: 0.6em;
+}
+
+.form-field[data-product-attribute="input-checkbox"] label.form-label::before {
+    top: 0;
+}
+
+.productView-details .form #qn-add-to-quote.button--secondary {
+   width: 100%;
+}
+
+@media (min-width: 801px) {
+    .productView-details .form #qn-add-to-quote.button--secondary {
+        width: 230px;
+    }
+}
